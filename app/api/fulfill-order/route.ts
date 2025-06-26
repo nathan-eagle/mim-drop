@@ -64,22 +64,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Real Printify API integration
+    // Real Printify API integration (custom storefront - no shop ID needed)
     const printifyApiToken = process.env.PRINTIFY_API_TOKEN
-    const printifyShopId = process.env.PRINTIFY_SHOP_ID
     
     if (!printifyApiToken) {
       console.error('PRINTIFY_API_TOKEN not set')
       return NextResponse.json(
         { error: 'Printify API not configured - missing token' },
-        { status: 500 }
-      )
-    }
-
-    if (!printifyShopId) {
-      console.error('PRINTIFY_SHOP_ID not set')
-      return NextResponse.json(
-        { error: 'Printify API not configured - missing shop ID' },
         { status: 500 }
       )
     }
@@ -113,8 +104,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create order in Printify
-    const printifyResponse = await fetch(`https://api.printify.com/v1/shops/${printifyShopId}/orders.json`, {
+    // Create order via Printify API (custom storefront - direct product fulfillment)
+    const printifyResponse = await fetch('https://api.printify.com/v1/orders.json', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${printifyApiToken}`,
