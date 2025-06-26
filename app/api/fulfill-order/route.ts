@@ -79,14 +79,36 @@ export async function POST(request: NextRequest) {
     console.log(`Customer: ${order.first_name} ${order.last_name}`)
     console.log(`Address: ${shippingAddresses[0]?.address1}, ${shippingAddresses[0]?.city}, ${shippingAddresses[0]?.state}`)
 
-    // Build Printify order payload
+    // Get product design details from your database first
+    const { data: productDesign, error: designError } = await supabase
+      .from('product_designs')
+      .select('*')
+      .eq('id', orderItems[0].product_design_id)
+      .single()
+
+    if (designError || !productDesign) {
+      console.error('Product design not found:', designError)
+      return NextResponse.json(
+        { error: 'Product design not found in database' },
+        { status: 404 }
+      )
+    }
+
+    console.log(`Found product design: ${productDesign.name}`)
+    console.log(`Blueprint ID: ${productDesign.blueprint_id}, Provider: ${productDesign.print_provider_id}`)
+
+    // Build Printify order payload using blueprint data
     const printifyOrderData = {
       external_id: order_id,
       label: `MiM Order ${order_id}`,
       line_items: orderItems.map((item: any) => ({
-        product_id: item.product_design_id, // Your Printify product ID
-        variant_id: 1, // Default variant - you'd normally map this properly
-        quantity: item.quantity
+        blueprint_id: productDesign.blueprint_id, // 1446 for Snapback Trucker Cap
+        print_provider_id: productDesign.print_provider_id, // 217
+        variant_id: 102226, // Default variant from your mockup URL
+        quantity: item.quantity,
+        print_areas: {
+          front: productDesign.team_logo_image_id // Your team logo
+        }
       })),
       shipping_method: 1, // Standard shipping
       send_shipping_notification: false,
