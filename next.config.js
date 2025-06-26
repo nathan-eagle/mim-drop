@@ -2,11 +2,37 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      'printify.s3.amazonaws.com',
-      'cdn.printify.com',
-      'images.printify.com',
-      'mockup-api.printify.com'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'printify.s3.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.printify.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.printify.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images-api.printify.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'mockup-api.printify.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
   env: {
