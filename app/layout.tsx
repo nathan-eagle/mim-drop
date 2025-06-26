@@ -6,8 +6,8 @@ import React from 'react'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MiM Youth Sports | Custom Team Merchandise',
-  description: 'Create custom team merchandise for your youth sports team. Upload your logo and get high-quality apparel delivered to your door.',
+  title: 'MiM Youth Sports | Custom Team Drops',
+  description: 'Create custom team drops for your youth sports team. Upload your logo and get high-quality apparel delivered to your door.',
   keywords: 'youth sports, team merchandise, custom apparel, team shirts, team hats, sports gear',
 }
 
@@ -27,7 +27,7 @@ export default function RootLayout({
                   🏆 MiM Youth Sports
                 </h1>
                 <span className="ml-3 text-sm text-gray-500">
-                  Custom Team Merchandise
+                  Custom Team Drops
                 </span>
               </div>
               <nav className="hidden md:flex space-x-6">
@@ -55,7 +55,7 @@ export default function RootLayout({
               <div>
                 <h3 className="text-lg font-semibold mb-4">MiM Youth Sports</h3>
                 <p className="text-gray-400">
-                  Creating custom team merchandise that builds team spirit and lasting memories.
+                  Creating custom team drops that builds team spirit and lasting memories.
                 </p>
               </div>
               <div>

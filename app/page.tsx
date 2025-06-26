@@ -8,12 +8,12 @@ export default function HomePage() {
       <section className="sports-gradient text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Custom Team Merchandise
+            Custom Team Drops
             <span className="block text-team-gold">Made Simple</span>
           </h1>
           <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
             Upload your team logo, choose your products, and get professional-quality 
-            merchandise delivered to your door. Perfect for youth sports teams!
+            drops delivered to your door. Perfect for youth sports teams!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/gallery" className="btn-secondary bg-white text-primary-700 hover:bg-gray-100">
@@ -127,7 +127,7 @@ export default function HomePage() {
             Ready to Create Your Team's Gear?
           </h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join hundreds of teams who trust MiM for their custom merchandise needs.
+            Join hundreds of teams who trust MiM for their custom drop needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 

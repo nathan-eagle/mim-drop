@@ -54,7 +54,7 @@ export default async function ProductDesignPage({ params }: Props) {
           </h1>
           {sport && (
             <p className="text-lg text-gray-600">
-              Custom {sport} team merchandise for {teamName}
+              Custom {sport} team drop for {teamName}
             </p>
           )}
         </div>

@@ -25,7 +25,7 @@ export default function SuccessPage({ searchParams }: Props) {
         </h1>
         
         <p className="text-xl text-gray-600 mb-8">
-          Your custom team merchandise is on its way to production!
+          Your custom team drop is on its way to production!
         </p>
 
         {orderId && (

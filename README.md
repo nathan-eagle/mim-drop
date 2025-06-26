@@ -1,6 +1,6 @@
-# MiM Youth Sports Storefront
+# MiM Youth Sports Drop
 
-React/Next.js storefront for custom youth sports team merchandise. Integrates with Slack bot for design creation and Supabase + Stripe for orders.
+React/Next.js drop page for custom youth sports team merchandise. Integrates with Slack bot for design creation and Supabase + Stripe for orders.
 
 ## 🚀 Quick Start
 
@@ -47,12 +47,12 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see the storefront.
+Visit `http://localhost:3000` to see the drop page.
 
 ## 📁 Project Structure
 
 ```
-storefront/
+drop/
 ├── app/                    # Next.js 13+ app directory
 │   ├── design/[id]/       # Product design pages (/design/123)
 │   ├── api/               # API routes (checkout, webhooks)
@@ -68,7 +68,7 @@ storefront/
 
 ## 🔗 Integration with Slack Bot
 
-The Slack bot creates product designs in Supabase which this storefront displays:
+The Slack bot creates product designs in Supabase which this drop page displays:
 
 1. **Bot creates design** → Saves to `product_designs` table
 2. **Bot shares link** → `https://store.com/design/{id}`  
@@ -77,7 +77,7 @@ The Slack bot creates product designs in Supabase which this storefront displays
 
 ## 🛒 User Flow
 
-1. Parent receives storefront link from Slack bot
+1. Parent receives drop link from Slack bot
 2. Views custom product with team logo mockup
 3. Selects sizes and quantities (bulk discounts apply)
 4. Fills shipping and customer info
