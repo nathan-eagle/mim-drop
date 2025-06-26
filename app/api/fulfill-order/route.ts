@@ -12,17 +12,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get order details with all related data
+    // Get order details (simplified query)
     const { data: order, error: orderError } = await supabase
       .from('customer_orders')
-      .select(`
-        *,
-        order_items(*),
-        shipping_addresses(*),
-        order_items(
-          product_designs(*)
-        )
-      `)
+      .select('*')
       .eq('id', order_id)
       .single()
 
@@ -30,6 +23,34 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching order:', orderError)
       return NextResponse.json(
         { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
+    // Get order items separately
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', order_id)
+
+    // Get shipping address separately  
+    const { data: shippingAddresses, error: addressError } = await supabase
+      .from('shipping_addresses')
+      .select('*')
+      .eq('order_id', order_id)
+
+    if (itemsError || !orderItems || orderItems.length === 0) {
+      console.error('Error fetching order items:', itemsError)
+      return NextResponse.json(
+        { error: 'Order items not found' },
+        { status: 404 }
+      )
+    }
+
+    if (addressError || !shippingAddresses || shippingAddresses.length === 0) {
+      console.error('Error fetching shipping address:', addressError)
+      return NextResponse.json(
+        { error: 'Shipping address not found' },
         { status: 404 }
       )
     }
@@ -56,14 +77,14 @@ export async function POST(request: NextRequest) {
           last_name: order.last_name,
           email: order.email,
           phone: order.phone,
-          address1: order.shipping_addresses[0]?.address1,
-          address2: order.shipping_addresses[0]?.address2,
-          city: order.shipping_addresses[0]?.city,
-          state: order.shipping_addresses[0]?.state,
-          zip: order.shipping_addresses[0]?.zip,
-          country: order.shipping_addresses[0]?.country || 'US'
+          address1: shippingAddresses[0]?.address1,
+          address2: shippingAddresses[0]?.address2,
+          city: shippingAddresses[0]?.city,
+          state: shippingAddresses[0]?.state,
+          zip: shippingAddresses[0]?.zip,
+          country: shippingAddresses[0]?.country || 'US'
         },
-        order_items: order.order_items.map((item: any) => ({
+        order_items: orderItems.map((item: any) => ({
           design_id: item.product_design_id,
           quantity: item.quantity,
           unit_price: item.unit_price
