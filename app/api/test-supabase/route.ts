@@ -56,4 +56,53 @@ export async function GET(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
-} 
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { action, order_id } = body
+
+    console.log('Test POST endpoint called with:', { action, order_id })
+
+    if (action === 'reset_order' && order_id) {
+      // Reset order for retesting
+      const { data, error } = await supabase
+        .from('customer_orders')
+        .update({
+          printify_order_id: null,
+          fulfillment_status: 'pending'
+        })
+        .eq('id', order_id)
+        .select()
+
+      if (error) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Failed to reset order',
+          details: error.message 
+        })
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: '🔄 Order reset for retesting',
+        data: data
+      })
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Invalid action',
+      available_actions: ['reset_order']
+    })
+
+  } catch (error) {
+    console.error('Test POST API error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Test POST failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}

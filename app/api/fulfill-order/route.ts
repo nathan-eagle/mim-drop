@@ -97,14 +97,73 @@ export async function POST(request: NextRequest) {
     console.log(`Found product design: ${productDesign.name}`)
     console.log(`Blueprint ID: ${productDesign.blueprint_id}, Provider: ${productDesign.print_provider_id}`)
 
-    // Build Printify order payload using blueprint data
+    // Get valid variants for this blueprint/provider combination FIRST
+    console.log('🔍 Getting valid variants for blueprint/provider...')
+    const variantsResponse = await fetch(`https://api.printify.com/v1/catalog/blueprints/${productDesign.blueprint_id}/print_providers/${productDesign.print_provider_id}/variants.json`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${printifyApiToken}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!variantsResponse.ok) {
+      console.error('Failed to get variants:', await variantsResponse.text())
+      const variantErrorId = `variant_error_${Date.now()}_${productDesign.blueprint_id}`
+      await supabase
+        .from('customer_orders')
+        .update({
+          printify_order_id: variantErrorId,
+          fulfillment_status: 'error'
+        })
+        .eq('id', order_id)
+
+      return NextResponse.json({
+        success: false,
+        printify_order_id: variantErrorId,
+        status: 'error',
+        message: '❌ Could not get valid variants',
+        error: 'Variant lookup failed'
+      })
+    }
+
+    const variantsData = await variantsResponse.json()
+    const validVariants = variantsData.variants || []
+    
+    if (validVariants.length === 0) {
+      console.error('No valid variants found')
+      const noVariantsId = `no_variants_${Date.now()}_${productDesign.blueprint_id}`
+      await supabase
+        .from('customer_orders')
+        .update({
+          printify_order_id: noVariantsId,
+          fulfillment_status: 'error'
+        })
+        .eq('id', order_id)
+
+      return NextResponse.json({
+        success: false,
+        printify_order_id: noVariantsId,
+        status: 'error',
+        message: '❌ No variants available',
+        error: 'Blueprint/provider has no variants'
+      })
+    }
+
+    // Use all valid variants (Printify often requires ALL variants in print_areas)
+    const allVariantIds = validVariants.map((v: any) => v.id)
+    const firstVariant = validVariants[0]
+    console.log(`✅ Found variants: ${allVariantIds.join(', ')}`)
+    console.log(`✅ Using first variant: ${firstVariant.id} (${firstVariant.title})`)
+
+    // Build Printify order payload using blueprint data with CORRECT variant
     const printifyOrderData = {
       external_id: order_id,
       label: `MiM Order ${order_id}`,
       line_items: orderItems.map((item: any) => ({
         blueprint_id: productDesign.blueprint_id, // 1446 for Snapback Trucker Cap
         print_provider_id: productDesign.print_provider_id, // 217
-        variant_id: 102226, // Default variant from your mockup URL
+        variant_id: firstVariant.id, // First variant from API
         quantity: item.quantity,
         print_areas: {
           front: productDesign.team_logo_image_id // Your team logo
@@ -135,7 +194,7 @@ export async function POST(request: NextRequest) {
     console.log(`   Customer: ${order.first_name} ${order.last_name}`)
     console.log(`   Shipping: ${shippingAddresses[0]?.city}, ${shippingAddresses[0]?.state}`)
 
-    // First, create the product in Printify (required before ordering)
+    // Create product payload with valid variant
     const createProductPayload = {
       title: `${productDesign.name} - Order ${order_id}`,
       description: `Custom ${productDesign.name} for ${order.first_name} ${order.last_name}`,
@@ -143,14 +202,14 @@ export async function POST(request: NextRequest) {
       print_provider_id: productDesign.print_provider_id,
       variants: [
         {
-          id: 102226, // One Size variant from your mockup
+          id: firstVariant.id,
           price: Math.round(productDesign.base_price * 100), // Price in cents
           is_enabled: true
         }
       ],
       print_areas: [
         {
-          variant_ids: [102226],
+          variant_ids: allVariantIds, // ALL variants, not just one
           placeholders: [
             {
               position: "front",
@@ -159,7 +218,7 @@ export async function POST(request: NextRequest) {
                   id: productDesign.team_logo_image_id,
                   x: 0.5,
                   y: 0.5,
-                  scale: 1,
+                  scale: 0.6, // Use 60% scale like working Slack app
                   angle: 0
                 }
               ]
@@ -169,66 +228,12 @@ export async function POST(request: NextRequest) {
       ]
     }
 
+    // Use your known shop ID from our earlier check
+    const shopId = '9564969'
+    console.log(`✅ Using Printify shop: ${shopId}`)
+
     console.log('📦 Step 1: Creating product in Printify...')
-    const createProductResponse = await fetch('https://api.printify.com/v1/shops.json', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${printifyApiToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!createProductResponse.ok) {
-      console.error('Failed to get shops:', await createProductResponse.text())
-      // Fall back to simulation
-      const fallbackOrderId = `fallback_${Date.now()}_${productDesign.blueprint_id}`
-      
-      await supabase
-        .from('customer_orders')
-        .update({
-          printify_order_id: fallbackOrderId,
-          fulfillment_status: 'processing'
-        })
-        .eq('id', order_id)
-
-      return NextResponse.json({
-        success: true,
-        printify_order_id: fallbackOrderId,
-        status: 'processing',
-        message: '🎩 Order queued (API setup needed)',
-        note: 'Ready for production once Printify shop is configured'
-      })
-    }
-
-    const shops = await createProductResponse.json()
-    const shopId = shops[0]?.id
-
-    if (!shopId) {
-      console.error('No Printify shop found')
-      const fallbackOrderId = `no_shop_${Date.now()}_${productDesign.blueprint_id}`
-      
-      await supabase
-        .from('customer_orders')
-        .update({
-          printify_order_id: fallbackOrderId,
-          fulfillment_status: 'processing'
-        })
-        .eq('id', order_id)
-
-      return NextResponse.json({
-        success: true,
-        printify_order_id: fallbackOrderId,
-        status: 'processing',
-        message: '🎩 Order ready (shop setup needed)',
-        note: 'Create a shop in Printify dashboard first'
-      })
-    }
-
-    console.log(`✅ Found Printify shop: ${shopId}`)
-    
-    // Step 2: Create the actual product in Printify
-    console.log('📦 Step 2: Creating product in Printify...')
-    const productResponse = await fetch(`https://api.printify.com/v1/shops/${shopId}/products.json`, {
+    const createProductResponse = await fetch(`https://api.printify.com/v1/shops/${shopId}/products.json`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${printifyApiToken}`,
@@ -237,42 +242,41 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(createProductPayload)
     })
 
-    if (!productResponse.ok) {
-      const errorText = await productResponse.text()
-      console.error('Product creation failed:', errorText)
+    if (!createProductResponse.ok) {
+      const errorText = await createProductResponse.text()
+      console.error('Failed to create product:', errorText)
       
-      const fallbackOrderId = `product_error_${Date.now()}_${shopId}`
+      const productErrorId = `product_error_${Date.now()}_${shopId}`
       await supabase
         .from('customer_orders')
         .update({
-          printify_order_id: fallbackOrderId,
-          fulfillment_status: 'processing'
+          printify_order_id: productErrorId,
+          fulfillment_status: 'error'
         })
         .eq('id', order_id)
 
       return NextResponse.json({
-        success: true,
-        printify_order_id: fallbackOrderId,
-        status: 'processing',
-        message: '🎩 Product creation attempted',
-        error: errorText,
-        note: 'Check Printify API permissions'
+        success: false,
+        printify_order_id: productErrorId,
+        status: 'error',
+        message: '❌ Product creation failed',
+        error: errorText
       })
     }
 
-    const productData = await productResponse.json()
-    const printifyProductId = productData.id
+    const createdProduct = await createProductResponse.json()
+    const printifyProductId = createdProduct.id
     console.log(`✅ Product created: ${printifyProductId}`)
 
-    // Step 3: Create the actual order in Printify
-    console.log('🚀 Step 3: Creating order in Printify...')
+    // Step 2: Create the actual order in Printify
+    console.log('🚀 Step 2: Creating order in Printify...')
     const orderPayload = {
       external_id: order_id,
       label: `MiM Order ${order_id} - ${order.first_name} ${order.last_name}`,
       line_items: [
         {
           product_id: printifyProductId,
-          variant_id: 102226,
+          variant_id: firstVariant.id,
           quantity: orderItems[0].quantity
         }
       ],
