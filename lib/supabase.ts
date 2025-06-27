@@ -26,6 +26,8 @@ export interface ProductDesign {
     [key: string]: any
   }
   product_type: string
+  default_variant_id?: number | null  // Creator's selected color variant
+  default_color?: string | null       // Creator's selected color name
 }
 
 export interface ProductVariant {

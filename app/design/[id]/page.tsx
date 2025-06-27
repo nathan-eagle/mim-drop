@@ -127,6 +127,12 @@ export default async function ProductDesignPage({ params }: Props) {
                   <span className="text-gray-600">Product Type:</span>
                   <span className="font-medium capitalize">{design.product_type}</span>
                 </div>
+                {design.default_color && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Featured Color:</span>
+                    <span className="font-medium">{design.default_color}</span>
+                  </div>
+                )}
               </div>
             </div>
 
