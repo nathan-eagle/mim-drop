@@ -96,6 +96,98 @@ export async function POST(request: NextRequest) {
 
     console.log(`Found product design: ${productDesign.name}`)
     console.log(`Blueprint ID: ${productDesign.blueprint_id}, Provider: ${productDesign.print_provider_id}`)
+    console.log(`Stored Printify Product ID: ${productDesign.printify_product_id}`)
+
+    // Check if we already have a permanent Printify product to reuse
+    if (productDesign.printify_product_id) {
+      console.log(`🔄 Reusing existing Printify product: ${productDesign.printify_product_id}`)
+      
+      // Skip product creation, go directly to order creation
+      const orderPayload = {
+        external_id: order_id,
+        label: `MiM Order ${order_id} - ${order.first_name} ${order.last_name}`,
+        line_items: [
+          {
+            product_id: productDesign.printify_product_id,
+            variant_id: orderItems[0].variant_id || productDesign.default_variant_id,
+            quantity: orderItems[0].quantity
+          }
+        ],
+        shipping_method: 1,
+        send_shipping_notification: false,
+        address_to: {
+          first_name: shippingAddresses[0].first_name,
+          last_name: shippingAddresses[0].last_name,
+          email: order.email,
+          phone: order.phone || '',
+          country: shippingAddresses[0].country,
+          region: shippingAddresses[0].state,
+          address1: shippingAddresses[0].address1,
+          address2: shippingAddresses[0].address2 || '',
+          city: shippingAddresses[0].city,
+          zip: shippingAddresses[0].zip
+        }
+      }
+
+      const shopId = '9564969'
+      console.log(`🚀 Creating order directly with existing product ${productDesign.printify_product_id}`)
+      
+      const orderResponse = await fetch(`https://api.printify.com/v1/shops/${shopId}/orders.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${printifyApiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderPayload)
+      })
+
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text()
+        console.error('Order creation failed:', errorText)
+        
+        const orderErrorId = `order_error_${Date.now()}_${productDesign.printify_product_id}`
+        await supabase
+          .from('customer_orders')
+          .update({
+            printify_order_id: orderErrorId,
+            fulfillment_status: 'error'
+          })
+          .eq('id', order_id)
+
+        return NextResponse.json({
+          success: false,
+          printify_order_id: orderErrorId,
+          status: 'error',
+          message: '❌ Order creation failed with existing product',
+          error: errorText
+        })
+      }
+
+      const orderData = await orderResponse.json()
+      const realPrintifyOrderId = orderData.id
+      console.log(`🎉 ORDER CREATED WITH EXISTING PRODUCT: ${realPrintifyOrderId}`)
+
+      // Update with real Printify order ID
+      await supabase
+        .from('customer_orders')
+        .update({
+          printify_order_id: realPrintifyOrderId,
+          fulfillment_status: 'processing'
+        })
+        .eq('id', order_id)
+
+      return NextResponse.json({
+        success: true,
+        printify_order_id: realPrintifyOrderId,
+        printify_product_id: productDesign.printify_product_id,
+        status: 'processing',
+        message: '🎉 ORDER CREATED WITH EXISTING PRODUCT!',
+        reused_existing_product: true
+      })
+    }
+
+    // Fallback: Create new product if printify_product_id is missing
+    console.log(`⚠️ No stored product ID found, creating new product...`)
 
     // Get valid variants for this blueprint/provider combination FIRST
     console.log('🔍 Getting valid variants for blueprint/provider...')
@@ -267,6 +359,14 @@ export async function POST(request: NextRequest) {
     const createdProduct = await createProductResponse.json()
     const printifyProductId = createdProduct.id
     console.log(`✅ Product created: ${printifyProductId}`)
+
+    // Save the new product ID back to the database for future reuse
+    await supabase
+      .from('product_designs')
+      .update({ printify_product_id: printifyProductId })
+      .eq('id', orderItems[0].product_design_id)
+    
+    console.log(`💾 Saved product ID ${printifyProductId} to database for future reuse`)
 
     // Step 2: Create the actual order in Printify
     console.log('🚀 Step 2: Creating order in Printify...')
